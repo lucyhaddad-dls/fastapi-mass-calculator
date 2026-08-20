@@ -1,0 +1,16 @@
+{
+    "name": "fastAPI Python Service",
+    "build": {
+        "dockerfile": "../Dockerfile"
+  },
+  "runArgs": ["--security-opt=label=type:container_runtime_t"],
+    "remoteEnv": {"HOME": ""},
+    "customizations": {
+        "vscode": {
+            "extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance"
+            ]
+        }
+    }
+}
