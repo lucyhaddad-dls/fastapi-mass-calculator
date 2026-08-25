@@ -171,7 +171,7 @@ def set_xy_data(x:ndarray|Measurement,
         y = array(y_out)
 
     x = json.dumps(x, cls=NumpyEncoder)
-    y = json.dumps(x, cls=NumpyEncoder)
+    y = json.dumps(y, cls=NumpyEncoder)
 
     return x, y, xlabel, ylabel
 
