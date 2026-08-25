@@ -4,7 +4,7 @@ from utils.calculate import (input_data, update_input_data_from_key, calculate_t
                               calculate_mass,
                               AMeasurement, get_input_data_from_key,
                               get_linear_absorption_data, get_mass_absorption_data,
-                                get_total_absorption_data)
+                                get_total_absorption_data, make_XRaySample)
 
 app = FastAPI()
 
@@ -98,3 +98,8 @@ async def calculate_total_absorption(elements:list[str]=["total"])->dict:
     out = {"xlabel": xlabel, "ylabel": ylabel, "x": xdata, "y": ydata}
     return out
 
+@app.get("/api/elements", tags=["elements"])
+async def get_elements_list()->dict:
+    sample = make_XRaySample(input_data)
+    elements = sample.elements
+    return {"elements": [e.name for e in elements]}
