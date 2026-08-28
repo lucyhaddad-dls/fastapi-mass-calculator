@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from utils.calculate import (input_data, update_input_data_from_key, calculate_thickness,
-                              calculate_mass,
-                              AMeasurement, get_input_data_from_key,
-                              get_linear_absorption_data, get_mass_absorption_data,
-                                get_total_absorption_data, make_XRaySample)
+                            calculate_mass,
+                            AMeasurement, get_input_data_from_key,
+                            make_XRaySample, get_absorption_data_all_elements)
+from typing import Literal
 
 app = FastAPI()
 
@@ -77,29 +77,14 @@ async def _calculate_thickness()->dict:
     return {"thickness": thickness,
             "unit": unit}
 
-@app.post("/api/calculate/mass-absorption",
-          tags=["calculate-mass_absorption"])
-async def calculate_mass_absorption(elements:list[str]=["total"])->dict:
-    xdata, ydata, xlabel, ylabel = get_mass_absorption_data(elements)
-    out = {"xlabel": xlabel, "ylabel": ylabel, "x": xdata, "y": ydata}
-    return out
-
-@app.post("/api/calculate/linear-mass-absorption", 
-         tags=["calculate-linear_mass_absorption"])
-async def calculate_linear_absorption(elements:list[str]=["total"])->dict:
-    xdata, ydata, xlabel, ylabel = get_linear_absorption_data(elements)
-    out = {"xlabel": xlabel, "ylabel": ylabel, "x": xdata, "y": ydata}
-    return out
-
-@app.post("/api/calculate/total-mass-absorption", 
-         tags=["calculate-total_mass_absorption"])
-async def calculate_total_absorption(elements:list[str]=["total"])->dict:
-    xdata, ydata, xlabel, ylabel = get_total_absorption_data(elements)
-    out = {"xlabel": xlabel, "ylabel": ylabel, "x": xdata, "y": ydata}
-    return out
-
 @app.get("/api/elements", tags=["elements"])
 async def get_elements_list()->dict:
     sample = make_XRaySample(input_data)
     elements = sample.elements
     return {"elements": [e.name for e in elements]}
+
+@app.get("/api/absorption", tags=["absorption"])
+async def get_all_absorption(abs_type:Literal["mass", "total", "linear"])\
+    ->dict:
+    out = get_absorption_data_all_elements(abs_type=abs_type)
+    return out

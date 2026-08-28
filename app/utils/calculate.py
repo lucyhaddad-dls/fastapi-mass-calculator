@@ -2,6 +2,7 @@ from sample_mass_calcs.xas_sample import XRaySample, Measurement
 from numpy import ndarray, array
 from .models import (input_data, AMeasurement, NumpyEncoder)
 import json
+from typing import Literal
 
 _types = {"str": str,
             "float": float}
@@ -103,52 +104,7 @@ def get_input_data_from_key(name:str)->str:
     idx = [i for i in range(len(input_data))\
               if input_data[i]["name"] == name][0]
     return input_data[idx]["value"]["val"]
-
-def get_mass_absorption_data(elements:list[str])\
-    ->tuple[str, str, str, str]:
-    sample = make_XRaySample(input_data)
-    ydata = [e.mass_absorption for e in sample.elements \
-             if e.name in elements]
-    if "total" in elements:
-        ydata.append(sample.mass_absorption)
-    xdata = sample.energy
-
-    xdata, ydata, xlabel, ylabel = set_xy_data(xdata, ydata)
-
-    return xdata, ydata, xlabel, ylabel
-
-def get_linear_absorption_data(elements:list[str])\
-    ->tuple[str, str, str, str]:
-    # mass absorption data * density
-    sample = make_XRaySample(input_data)
-    if sample.density.value is None:
-        raise AttributeError("Sample needs density value.")
-    
-    ydata = [e.mass_absorption*sample.density for e in sample.elements \
-        if e.name in elements]
-    if "total" in elements:
-        ydata.append(sample.mass_absorption*sample.density)
-    xdata = sample.energy
-    xdata, ydata, xlabel, ylabel = set_xy_data(xdata, ydata)
-    return xdata, ydata, xlabel, ylabel
-
-def get_total_absorption_data(elements:list[str])\
-    ->tuple[str, str, str, str]:
-    # mass absorption data * density * thickness
-    sample = make_XRaySample(input_data)
-    if sample.density.value is None:
-        raise AttributeError("Sample needs density value.")
-    if sample.thickness.value is None:
-        raise AttributeError("Sample needs thickness value.")
-
-    ydata = [e.mass_absorption*sample.density*sample.thickness \
-              for e in sample.elements if e.name in elements]
-    if "total" in elements:
-        ydata.append(sample.mass_absorption*sample.density*sample.thickness)
-    xdata = sample.energy
-    xdata, ydata, xlabel, ylabel = set_xy_data(xdata, ydata)
-    return xdata, ydata, xlabel, ylabel    
-
+ 
 def set_xy_data(x:ndarray|Measurement, 
                  y:list[ndarray]|list[Measurement])\
     ->tuple[str, str, str, str]:
@@ -175,3 +131,52 @@ def set_xy_data(x:ndarray|Measurement,
 
     return x, y, xlabel, ylabel
 
+def get_absorption_data_all_elements(abs_type:Literal["mass", "linear", "total"])\
+    -> dict:
+    sample = make_XRaySample(input_data)
+    out = {}
+    out["kind"] = abs_type
+
+    xtotal = sample.energy
+    ytotal = []
+
+    if abs_type == "mass":
+        yt = sample.mass_absorption
+        xt, yt, xl, yl = set_xy_data(xtotal, yt)
+        ytotal.append({"name": "total", "y": yt})
+        for e in sample.elements:
+            yt = set_xy_data(xtotal,
+                            e.mass_absorption)[1]
+            ytotal.append({"name": e.name, "y": yt})
+
+    if abs_type == "linear":
+        if sample.density.value is None:
+            return {"error": "sample has no attribute density"}
+        yt = sample.mass_absorption * sample.density
+        xt, yt, xl, yl = set_xy_data(xtotal, yt)
+        ytotal.append({"name": "total", "y": yt})
+        for e in sample.elements:
+            yt = set_xy_data(xtotal,
+                e.mass_absorption*sample.density)[1]
+            ytotal.append({"name": e.name, "y": yt})
+
+    if abs_type == "total":
+        missing = []
+        if sample.density.value is None:
+            missing.append("density")
+        if sample.thickness.value is None:
+            missing.append("thickness")
+        if len(missing) > 0:
+            return {"error": f"sample has no attribute {[k for k in missing]}"}
+        yt = sample.mass_absorption*sample.density*sample.thickness
+        xt, yt, xl, yl = set_xy_data(xtotal, yt)
+        ytotal.append({"name": "total", "y": yt})
+        for e in sample.elements:
+            yt = set_xy_data(xtotal,
+                e.mass_absorption*sample.density*sample.thickness)[1]
+            ytotal.append({"name": e.name, "y": yt})
+
+    out["x"] = xt; out["xlabel"] = xl; out["ylabel"] = yl
+    out["y"] = ytotal
+    return out
+   

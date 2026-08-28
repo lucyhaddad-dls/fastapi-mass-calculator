@@ -25,7 +25,7 @@ input_data = [
     {"name": "length_unit",
       "value": {"val": "cm", "dtype": "str"}},
     {"name": "energy_unit",
-      "value": {"val": "gev", "dtype": "str"}}
+      "value": {"val": "kev", "dtype": "str"}}
               ]
 
 class InputMeasurement(BaseModel):
@@ -36,7 +36,7 @@ class AMeasurement(BaseModel):
     value: Optional[InputMeasurement] = None
     name: str
 
- 
+
 class NumpyEncoder(json.JSONEncoder):
     """
     e.g.
