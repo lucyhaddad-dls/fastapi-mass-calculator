@@ -4,6 +4,7 @@ from utils.calculate import (input_data, update_input_data_from_key, calculate_t
                             calculate_mass,
                             AMeasurement, get_input_data_from_key,
                             make_XRaySample, get_absorption_data_all_elements)
+from utils.sample_builder import formula_from_mass_ratios
 from typing import Literal
 
 app = FastAPI()
@@ -87,4 +88,14 @@ async def get_elements_list()->dict:
 async def get_all_absorption(abs_type:Literal["mass", "total", "linear"])\
     ->dict:
     out = get_absorption_data_all_elements(abs_type=abs_type)
+    return out
+
+
+@app.post("/api/calculate/formula/mass-ratios", 
+         tags=["formula-mass-ratios"])
+async def make_formula_from_mass_ratios(formula_list:list[str],
+                                         ratios:list[str|float|int])->str:
+    out = formula_from_mass_ratios(formula_list= formula_list,
+                                    ratios= ratios,
+                                    keep_order=True)
     return out
