@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from utils.calculate import (input_data, update_input_data_from_key, calculate_thickness,
+from .utils.calculate import (input_data, update_input_data_from_key, calculate_thickness,
                             calculate_mass,
                             AMeasurement, get_input_data_from_key,
                             make_XRaySample, get_absorption_data_all_elements)
-from utils.sample_builder import formula_from_mass_ratios
+from .utils.sample_builder import formula_from_mass_ratios
 from typing import Literal
 
 app = FastAPI()
