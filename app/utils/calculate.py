@@ -1,31 +1,63 @@
-from sample_mass_calcs.xas_sample import XRaySample, Measurement
+from sample_mass_calcs.xas_sample import XRaySample, Measurement, PhotoElement
 from numpy import ndarray, array
-from .models import (input_data, AMeasurement, NumpyEncoder)
-import json
+from .models import (SampleMeasurement, SampleChemistryProps,
+                     SamplePhysicalProps, SampleAbsorptionProps,
+                     SampleElementProps, SampleUnitProps)
+
 from typing import Literal
 
-_types = {"str": str,
-            "float": float}
+def sample_to_dict(sample:XRaySample)->dict:
+    out = {"total": {},
+           }
+    
+    total = {}
 
-def _to_type(dtype:str): return _types[dtype]
+    for val in SampleChemistryProps._member_names_:
+        value, unit = get_name_and_unit(sample, val)
+        total[val] = {"value": value, "unit": unit}
 
-def input_data_to_kwargs(input_data:list[AMeasurement])->dict:
+    for val in SamplePhysicalProps._member_names_:
+        value, unit = get_name_and_unit(sample, val)
+        total[val] = {"value": value, "unit": unit}
+
+    for val in SampleAbsorptionProps._member_names_:
+        value, unit = get_name_and_unit(sample, val)
+        if isinstance(value, ndarray): value = value.tolist()
+        else: value = str(value)
+        total[val] = {"value": value, "unit": unit}
+
+
+    out["total"] = total
+
+    for element in sample.elements:
+        out[element.name] = {}
+        for val in SampleElementProps._member_names_:
+            value, unit = get_name_and_unit(element, val)
+            if isinstance(value, ndarray): value = value.tolist()
+            else: value = str(value)
+            out[element.name][val] = {"value": value, "unit": unit}
+
+    return out
+
+def input_data_to_kwargs(input_data:list[SampleMeasurement])->dict:
     """
     Convert dictionary of input data to keyword-arguments 
     for making an `XRaySample` object. \\
-    
     """
     kwargs = {}
     for itm in input_data:
-        k = itm["name"]; v = itm["value"]
-        if v["val"] is None or v["val"] == "None":
-            kwargs[k] = None
-        else:
-            dtype = _to_type(v["dtype"])
-            kwargs[k] = dtype(v["val"])
+        k = itm.name; v = itm.value
+        if v == "None":
+            kwargs[k] = None; continue
+        if k in SamplePhysicalProps._member_names_:
+            if isinstance(v, str):
+                kwargs[k] = float(v)
+        if k in SampleChemistryProps._member_names_ or k in SampleUnitProps._member_names_:
+            kwargs[k] = str(v)
+
     return kwargs
 
-def make_XRaySample(input_data:list[AMeasurement])->XRaySample:
+def make_XRaySample(input_data:list[SampleMeasurement])->XRaySample:
     """
     Make `XRaySample` object from input values. \\
     Each entry in the `input_dict` must be of form: \
@@ -35,7 +67,7 @@ def make_XRaySample(input_data:list[AMeasurement])->XRaySample:
     sample = XRaySample(**values)
     return sample
 
-def get_name_and_unit(sample:XRaySample, name:str)\
+def get_name_and_unit(sample:XRaySample|PhotoElement, name:str)\
                     ->tuple[str|ndarray|float|int|None, str|None]:
     """
     Get value and unit for a `Measurement` on `XRaySample` object.
@@ -56,7 +88,7 @@ def get_name_and_unit(sample:XRaySample, name:str)\
         unit = None; value = measurement
     return value, unit
 
-def calculate_thickness(input_data:list[AMeasurement])->None:
+def calculate_thickness(input_data:list[SampleMeasurement])->None:
     """
     If sample density is known, calculate sample thickness and update
     `input_dict`.
@@ -64,9 +96,9 @@ def calculate_thickness(input_data:list[AMeasurement])->None:
     sample = make_XRaySample(input_data)
     if sample.density.value is not None:
         sample.calculate_thickness()
-        update_input_data_from_sample(sample)
+    return sample_to_dict(sample)
 
-def calculate_mass(input_data:list[AMeasurement])->None:
+def calculate_mass(input_data:list[SampleMeasurement])->None:
     """
     If sample area and sample density (+ thickness) are known,\
     calculate sample mass and update `input_dict`.
@@ -74,37 +106,8 @@ def calculate_mass(input_data:list[AMeasurement])->None:
     sample = make_XRaySample(input_data)
     if sample.area.value is not None and sample.density.value is not None:
         sample.calculate_mass()
-        update_input_data_from_sample(sample)
+    return sample_to_dict(sample)
 
-def update_input_data_from_sample(sample:XRaySample):
-    """
-    Update `input_data` with new sample values.
-    """
-    for i in range(len(input_data)):
-        k = input_data[i]["name"]
-        val = getattr(sample, k)
-        if val is None:
-            tmp = input_data[i]["value"]
-            tmp["val"] = None
-            input_data[i]["value"] = tmp
-        elif hasattr(val, "value"):
-            input_data[i]["value"]["val"] = str(val.value)
-        else:
-            input_data[i]["value"]["val"] = str(val)
-
-def update_input_data_from_key(name:str, value:str):
-    """
-    Update`input_data` for a given value.
-    """
-    idx = [i for i in range(len(input_data))\
-          if input_data[i]["name"] == name][0]
-    input_data[idx]["value"]["val"] = value
-  
-def get_input_data_from_key(name:str)->str:
-    idx = [i for i in range(len(input_data))\
-              if input_data[i]["name"] == name][0]
-    return input_data[idx]["value"]["val"]
- 
 def set_xy_data(x:ndarray|Measurement, 
                  y:list[ndarray]|list[Measurement])\
     ->tuple[str, str, str, str]:
@@ -126,14 +129,20 @@ def set_xy_data(x:ndarray|Measurement,
             else: y_out.append(yi)
         y = array(y_out)
 
-    x = json.dumps(x, cls=NumpyEncoder)
-    y = json.dumps(y, cls=NumpyEncoder)
+    x = x.tolist()
+    y = [y0.tolist() for y0 in y]
 
     return x, y, xlabel, ylabel
 
-def get_absorption_data_all_elements(abs_type:Literal["mass", "linear", "total"])\
+def get_absorption_data_all_elements(
+        input_data:list[SampleMeasurement],
+        abs_type:Literal["mass", "linear", "total"])\
     -> dict:
     sample = make_XRaySample(input_data)
+    if abs_type != "mass":
+        sample.calculate_density()
+        sample.calculate_thickness()
+        sample.calculate_mass()
     out = {}
     out["kind"] = abs_type
 
@@ -179,4 +188,4 @@ def get_absorption_data_all_elements(abs_type:Literal["mass", "linear", "total"]
     out["x"] = xt; out["xlabel"] = xl; out["ylabel"] = yl
     out["y"] = ytotal
     return out
-   
+
