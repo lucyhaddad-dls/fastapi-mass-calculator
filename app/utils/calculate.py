@@ -14,6 +14,7 @@ def sample_to_dict(sample:XRaySample)->dict:
 
     for val in SampleChemistryProps._member_names_:
         value, unit = get_name_and_unit(sample, val)
+ 
         total[val] = {"value": value, "unit": unit}
 
     for val in SamplePhysicalProps._member_names_:
@@ -83,7 +84,8 @@ def get_name_and_unit(sample:XRaySample|PhotoElement, name:str)\
     """
     measurement = getattr(sample, name)
     if hasattr(measurement, "unit"):
-        unit = measurement.unit; value = measurement.value
+        unit = measurement.unit._repr_html_();
+        value = measurement.value
     else:
         unit = None; value = measurement
     return value, unit

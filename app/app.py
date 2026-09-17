@@ -76,3 +76,12 @@ async def make_formula_from_mass_ratios(formula_list:list[str],
                                     ratios= ratios,
                                     keep_order=True)
     return out
+
+@app.post("/api/calculate/all")
+async def get_sample_dict(input_data:list[SampleMeasurement])->dict:
+    sample = make_XRaySample(input_data)
+    if sample.density.value is not None:
+        sample.calculate_thickness()
+        if sample.area.value is not None:
+            sample.calculate_mass()
+    return sample_to_dict(sample)
