@@ -2,7 +2,7 @@ from sample_mass_calcs.xas_sample import XRaySample, Measurement, PhotoElement
 from numpy import ndarray, array
 from .models import (SampleMeasurement, SampleChemistryProps,
                      SamplePhysicalProps, SampleAbsorptionProps,
-                     SampleElementProps, SampleUnitProps)
+                     SampleElementProps, SampleUnitProps, SampleInputData)
 
 from typing import Literal
 
@@ -40,13 +40,13 @@ def sample_to_dict(sample:XRaySample)->dict:
 
     return out
 
-def input_data_to_kwargs(input_data:list[SampleMeasurement])->dict:
+def input_data_to_kwargs(input_data:SampleInputData)->dict:
     """
     Convert dictionary of input data to keyword-arguments 
     for making an `XRaySample` object. \\
     """
     kwargs = {}
-    for itm in input_data:
+    for itm in input_data.input_data:
         k = itm.name; v = itm.value
         if v == "None":
             kwargs[k] = None; continue
@@ -58,7 +58,7 @@ def input_data_to_kwargs(input_data:list[SampleMeasurement])->dict:
 
     return kwargs
 
-def make_XRaySample(input_data:list[SampleMeasurement])->XRaySample:
+def make_XRaySample(input_data:SampleInputData)->XRaySample:
     """
     Make `XRaySample` object from input values. \\
     Each entry in the `input_dict` must be of form: \
@@ -84,13 +84,13 @@ def get_name_and_unit(sample:XRaySample|PhotoElement, name:str)\
     """
     measurement = getattr(sample, name)
     if hasattr(measurement, "unit"):
-        unit = measurement.unit._repr_html_();
+        unit = measurement.unit._repr_html_()
         value = measurement.value
     else:
         unit = None; value = measurement
     return value, unit
 
-def calculate_thickness(input_data:list[SampleMeasurement])->None:
+def calculate_thickness(input_data:SampleInputData)->None:
     """
     If sample density is known, calculate sample thickness and update
     `input_dict`.
@@ -100,13 +100,14 @@ def calculate_thickness(input_data:list[SampleMeasurement])->None:
         sample.calculate_thickness()
     return sample_to_dict(sample)
 
-def calculate_mass(input_data:list[SampleMeasurement])->None:
+def calculate_mass(input_data:SampleInputData)->None:
     """
     If sample area and sample density (+ thickness) are known,\
     calculate sample mass and update `input_dict`.
     """
     sample = make_XRaySample(input_data)
     if sample.area.value is not None and sample.density.value is not None:
+        sample.calculate_thickness()
         sample.calculate_mass()
     return sample_to_dict(sample)
 
@@ -137,7 +138,7 @@ def set_xy_data(x:ndarray|Measurement,
     return x, y, xlabel, ylabel
 
 def get_absorption_data_all_elements(
-        input_data:list[SampleMeasurement],
+        input_data:SampleInputData,
         abs_type:Literal["mass", "linear", "total"])\
     -> dict:
     sample = make_XRaySample(input_data)

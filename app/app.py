@@ -1,11 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
-from .utils.calculate import (SampleMeasurement, make_XRaySample,
+from .utils.calculate import (make_XRaySample,
                               get_absorption_data_all_elements,
                               calculate_thickness, calculate_mass,
                               sample_to_dict)
 from .utils.sample_builder import formula_from_mass_ratios
-from typing import Literal
+from .utils.models import (SampleInputData)
+from typing import Literal, Annotated
 
 app = FastAPI()
 
@@ -20,13 +21,22 @@ app.add_middleware(CORSMiddleware,
                 )
 
 
-@app.get("/api", tags=["root"])
+@app.get("/api")
 async def read_root() -> dict:
     return {"message": "MASS CALCULATOR!!!"}
 
 
-@app.get("/api/calculate/mass", tags=["calculate-mass"])
-async def _calculate_mass(input_data:list[SampleMeasurement])->dict:
+@app.post("/api/calculate/mass", tags=["physical properties"])
+async def _calculate_mass(input_data:Annotated[SampleInputData,
+            Body(examples=[
+                {"input_data":[
+                            {"name":"formula" ,"value":"TiO2"},
+                            {"name":"edge" , "value":"L2"},
+                            {"name":"absorber", "value":"Ti"},
+                            {"name": "density", "value":"2.3"},
+                            {"name": "area", "value":"5"},
+                            {"name":"mass_unit", "value": "mg"}]
+                }])])->dict:
     """
     Calculate mass.
 
@@ -40,8 +50,16 @@ async def _calculate_mass(input_data:list[SampleMeasurement])->dict:
 
     return out["total"]["mass"]
 
-@app.get("/api/calculate/thickness", tags=["calculate-thickness"])
-async def _calculate_thickness(input_data:list[SampleMeasurement])->dict:
+@app.post("/api/calculate/thickness", tags=["physical properties"])
+async def _calculate_thickness(input_data:Annotated[SampleInputData,
+            Body(examples=[
+                {"input_data":[
+                            {"name":"formula" ,"value":"TiO2"},
+                            {"name":"edge" , "value":"K"},
+                            {"name":"absorber", "value":"Ti"},
+                            {"name": "density", "value":"34"},
+                            {"name": "mu_total", "value": "2.3"}]
+                }])])->dict:
     """
     Calculate thickness.
 
@@ -53,15 +71,21 @@ async def _calculate_thickness(input_data:list[SampleMeasurement])->dict:
     out = calculate_thickness(input_data)
     return out["total"]["thickness"]
 
-@app.get("/api/elements", tags=["elements"])
-async def get_elements_list(input_data:list[SampleMeasurement])->dict:
+@app.post("/api/elements", tags=["chemical properties"])
+async def get_elements_list(input_data:Annotated[SampleInputData,
+            Body(examples=[
+                {"input_data":[
+                            {"name":"formula" ,"value":"RhClFe3OH4"},
+                            {"name":"edge", "value": "k"},
+                            {"name": "absorber", "value": "Rh"}]
+                }])])->dict:
     sample = make_XRaySample(input_data)
     elements = sample.elements
     return {"elements": [e.name for e in elements]}
 
 @app.post("/api/absorption", tags=["absorption"])
 async def get_all_absorption(
-    input_data:list[SampleMeasurement],
+    input_data:SampleInputData,
     abs_type:Literal["mass", "total", "linear"])\
     ->dict:
     out = get_absorption_data_all_elements(input_data=input_data,
@@ -69,7 +93,7 @@ async def get_all_absorption(
     return out
 
 @app.post("/api/calculate/formula/mass-ratios", 
-         tags=["formula-mass-ratios"])
+         tags=["physical properties"])
 async def make_formula_from_mass_ratios(formula_list:list[str],
                                          ratios:list[str|float|int])->str:
     out = formula_from_mass_ratios(formula_list= formula_list,
@@ -77,8 +101,9 @@ async def make_formula_from_mass_ratios(formula_list:list[str],
                                     keep_order=True)
     return out
 
-@app.post("/api/calculate/all")
-async def get_sample_dict(input_data:list[SampleMeasurement])->dict:
+@app.post("/api/calculate/all", 
+          tags=["absorption", "chemical properties", "physical properties"])
+async def get_sample_dict(input_data:SampleInputData)->dict:
     sample = make_XRaySample(input_data)
     if sample.density.value is not None:
         sample.calculate_thickness()

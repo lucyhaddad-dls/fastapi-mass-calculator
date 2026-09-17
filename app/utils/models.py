@@ -30,9 +30,55 @@ class SampleMeasurement(BaseModel):
     value: Optional[str|list] = None
     name: str
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "value": "FeS",
+                "name": "formula"
+            }, {
+                "value": "10.2",
+                "name": "density"
+            }]
+        }
+    }
+
 class SampleElementProps(str, Enum):
     Z = "Z"
     A = "A"
     N = "N"
     massFraction = "massFraction"
     mass_absorption = "mass_absorption"
+
+class SampleInputData(BaseModel):
+    input_data: list[SampleMeasurement]  = [{"name": f,
+                                            "value": None}
+                    for f in 
+                   [ SampleChemistryProps._member_names_ 
+                    + SamplePhysicalProps._member_names_ +
+                    SampleUnitProps._member_names_]]
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "input_data":
+                    [
+                    {"name":"formula" ,"value":"FeS"},
+                    {"name":"edge" , "value":"K"},
+                    {"name":"absorber", "value":"Fe"},
+                    {"name": "density", "value":"None"},
+                    {"name": "surface_density", "value":"None"},
+                    {"name": "mass", "value":"None"},
+                    {"name": "area", "value":"None"},
+                    {"name": "thickness", "value":"None"},
+                    {"name": "mu_total", "value":"2.6"},
+                    {"name": "mass_unit", "value":"g"},
+                    {"name": "energy_unit", "value":"eV"},
+                    {"name": "length_unit", "value":"cm"} 
+                    ]
+            }
+        
+            ]
+        }
+    }
+        
+
+    
