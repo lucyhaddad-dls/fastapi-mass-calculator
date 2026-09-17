@@ -94,8 +94,10 @@ async def get_all_absorption(
 
 @app.post("/api/calculate/formula/mass-ratios", 
          tags=["physical properties"])
-async def make_formula_from_mass_ratios(formula_list:list[str],
-                                         ratios:list[str|float|int])->str:
+async def make_formula_from_mass_ratios(formula_list:Annotated[list[str],
+                                                Body(examples=[["Fe", "O", "P"]])],
+                                         ratios:Annotated[list[str|float|int],
+                                                Body(examples=[ [1, 0.5, 0.3] ])])->str:
     out = formula_from_mass_ratios(formula_list= formula_list,
                                     ratios= ratios,
                                     keep_order=True)
