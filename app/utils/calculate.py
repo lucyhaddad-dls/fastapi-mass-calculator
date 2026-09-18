@@ -8,9 +8,9 @@ from typing import Literal
 
 def sample_to_dict(sample:XRaySample)->dict:
     out = {"total": {},
-           }
+           "elements": {}}
     
-    total = {}
+    total = {}; elements = {}
 
     for val in SampleChemistryProps._member_names_:
         value, unit = get_name_and_unit(sample, val)
@@ -31,12 +31,15 @@ def sample_to_dict(sample:XRaySample)->dict:
     out["total"] = total
 
     for element in sample.elements:
-        out[element.name] = {}
+        elements[element.name] = {}
         for val in SampleElementProps._member_names_:
             value, unit = get_name_and_unit(element, val)
             if isinstance(value, ndarray): value = value.tolist()
             else: value = str(value)
-            out[element.name][val] = {"value": value, "unit": unit}
+            elements[element.name][val] = {"value": value, "unit": unit}
+
+    out["elements"] = elements
+    out["total"]["energy"] = {"value":sample.energy.value.tolist(), "unit":sample.energy.unit._repr_latex_()}
 
     return out
 
@@ -84,7 +87,7 @@ def get_name_and_unit(sample:XRaySample|PhotoElement, name:str)\
     """
     measurement = getattr(sample, name)
     if hasattr(measurement, "unit"):
-        unit = measurement.unit._repr_html_()
+        unit = measurement.unit._repr_latex_()
         value = measurement.value
     else:
         unit = None; value = measurement
@@ -117,14 +120,14 @@ def set_xy_data(x:ndarray|Measurement,
     xlabel, ylabel = "", ""
     
     if hasattr(x, "unit"):
-        xlabel = x.unit._repr_html_()
+        xlabel = x.unit._repr_latex_()
         x = x.value
     if hasattr(y, "unit"):
-        ylabel = y.unit._repr_html_()
+        ylabel = y.unit._repr_latex_()
         y = y.value
     if isinstance(y, list):
         if hasattr(y[0], "unit"):
-            ylabel = y[0].unit._repr_html_()
+            ylabel = y[0].unit._repr_latex_()
             y_out = []
         for yi in y:
             if hasattr(yi, "value"):
